@@ -1,6 +1,7 @@
 // DOM selectors for div sections
 const currentQuestion = document.querySelector("#question")
 const currentAnswers = document.querySelector("#answers")
+const results = document.querySelector("#results")
 
 // all questions are stored in the questions object below
 const questions = {
@@ -277,10 +278,146 @@ function buildQuiz(){
     getAge();
 }
 
+// array that holds final user choice objects
+// DO NOT CHANGE... answerSelected() does that for us
 var finalUserChoices = []
 // array that holds final service recommendations
 var serviceRecommendation = []
-// define function to handle answers
+
+// --- define how to display results --
+function displayRecommendations() {
+    for (let i = 0; i < serviceRecommendation.length; i++) {
+        paragraph = document.createElement('P')
+        paragraph.setAttribute("class", "recommendation")
+        textNode = document.createTextNode(serviceRecommendation[i])
+        paragraph.appendChild(textNode)
+        results.appendChild(paragraph)
+    }
+}
+
+// define function that turns final user choices into service recommendations
+function computeRecommendations(){
+    // clear questions and answers from dom
+    currentQuestion.innerHTML = ''
+    currentAnswers.innerHTML = ''
+    // get group number
+    groupNumber = _getGroupNumber()
+    // reformat answers into a single object for easier processing using boleans
+    _loopToFormat()
+    // do something with out newly formatted answerObj
+    _computeByGroupNumber(groupNumber, answerObj)
+    displayRecommendations()
+
+    console.log('answers will now be computed')
+    console.log(answerObj)
+    console.log(serviceRecommendation)
+}
+
+function _getGroupNumber() {
+    groupNumber = finalUserChoices[0].groupNumber
+    return groupNumber
+}
+
+// create empty object to store reformatted answers
+var answerObj = {}
+
+function _loopToFormat() {
+    // for each object in finalUserChoices...
+    for (let i = 0; i < finalUserChoices.length; i++) {
+        var questionNumber = finalUserChoices[i].questionNumber
+        var answer = finalUserChoices[i].answer
+        _formatAnswers(questionNumber, answer)
+    }
+}
+
+function _formatAnswers(key, value) {
+    if (value == 'Yes') {
+        var newValue = true
+    } else if (value == 'No') {
+        var newValue = false
+    }
+    answerObj[key] = newValue
+}
+
+function _computeByGroupNumber(groupNumber, answers) {
+    if (groupNumber == 1) {
+        _groupOneRecommendationLogic(answers)
+    } else if (groupNumber == 2) {
+        _groupTwoRecommendationLogic(answers)
+    } else if (groupNumber == 3) {
+        _groupThreeRecommendationLogic(answers)
+    } else if (groupNumber == 4) {
+        _groupFourRecommendationLogic(answers)
+    }
+}
+
+// --- logic for recomendations for each group ---
+
+// group one recommendation logic
+function _groupOneRecommendationLogic(answers) {
+    // if questions 1, 2, or 4 are true, add investment management to recommendations
+    if (answers[0] == true || answers[1] == true || answers['4'] == true) {
+        serviceRecommendation.push('Investment Management')
+    }
+    // if questions 3, 4, or 6 are true, add NextGen or Consulting to recommendations
+    if (answers[2] == true || answers[3] == true || answers[5] == true) {
+        serviceRecommendation.push('NextGen Subscription Service or Consulting')
+    }
+}
+
+// group two recommendation logic
+function _groupTwoRecommendationLogic(answers) {
+    // if questions 1 or 2 are true, add investment management to recommendations
+    if (answers[0] == true || answers[1] == true) {
+        serviceRecommendation.push('Investment Management')
+    }
+    // if questions 4 or 5 are true, add Consulting or Financial  to recommendations
+    if (answers[3] == true || answers[4] == true) {
+        serviceRecommendation.push('Consulting or Financial Planning')
+    }
+    //otherwise, if question 3 or 6 is true and qeustions 4 and 5 are false, just add consulting
+    else if ((answers[2] == true || answers[5] == true) && (answers[3] == false && answers[4] == false)) {
+        serviceRecommendation.push('Consulting')
+    }
+}
+
+// group three recommendation logic
+function _groupThreeRecommendationLogic(answers) {
+    // if questions 1 or 2 are true, add investment management to recommendations
+    if (answers[0] == true || answers[1] == true) {
+        serviceRecommendation.push('Investment Management')
+    }
+    // if question 3 is true and 4, 5, 6, and 8 are false, just add consulting
+    if (answers[2] == true && (answers[3] == false && answers[4] == false && answers[5] == false && answers[7] == false)) {
+        serviceRecommendation.push('Consulting')
+    }
+    //otherwise, if questions 4, 5, 6, or 8 are true, add Consulting or Financial Planning
+    else if (answers[3] == true || answers[4] == true || answers[5] == true || answers[7] == true) {
+        serviceRecommendation.push('Consulting or Financial Planning')
+    }
+    // if question 7 is true but 4, 5, 6, and 8 are false, just add financial planning
+    if (answers[6] == true && (answers[3] == false && answers[4] == false && answers[5] == false && answers[7] == false)) {
+        serviceRecommendation.push('Financial Planning')
+    }
+}
+
+// group four recommendation logic
+function _groupFourRecommendationLogic(answers) {
+    // if questions 1, 4, 5, or 6 are true or 8 is false.. or if question 2 and 3 are true... add Investment Management and Financial Planning
+    if ((answers[0] == true || answers[3] == true || answers[4] == true || answers[5] == true) || answers[7] == false 
+            || (answers[1] == true && answers[2] == true)) {
+        serviceRecommendation.push('Investment Management and Financial Planning')
+    } 
+    // otherwise, if question 2 is true and 3 and 7 are false, just add financial planning
+    else if (answers[1] == true && (answers[2] == false && answers[6] == false)) {
+        serviceRecommendation.push('Financial Planning')
+    }
+    // otherwise, if question 2 is false and 3 and 7 are true, just add Investment Management
+    else if (answers[1] == false && (answers[2] == true || answers[6] == true)) {
+        serviceRecommendation.push('Investment Management')
+    }
+}
+
 // this is how we will store answers based on user choices
 function answerSelected(groupNumber, questionNumber, answer){
     // when an answer is selected, create a new object with our passed in data
@@ -296,12 +433,19 @@ function answerSelected(groupNumber, questionNumber, answer){
 }
 
 // define function that loads subsequent question
-function nextQuestion() {
+// nextQuestion() uses groupNumber to assign the proper group number to our selectedDataObject
+// without it, the first object will have correct groupNumber but all others would be 1 because it was hardcoded into answerSelected
+function nextQuestion(groupNumber) {
     // increment the question counter
     questionCounter ++
     // update the current question of the div element with id="question"
     // var questionArray is defined below. it 
-    currentQuestion.innerHTML = questionArray[questionCounter].question
+    try {
+        currentQuestion.innerHTML = questionArray[questionCounter].question
+    } catch (error) {
+        console.log('quiz ended')
+        computeRecommendations()
+    }
     // clear answers by emptying div with id="answers"
     currentAnswers.innerHTML = ''
     // store the answers contained in our new question object that we create with buildQuiz()
@@ -316,8 +460,8 @@ function nextQuestion() {
         answerButton.appendChild(answerText)
         // TODO: show results after we run out of questions. right now it's throwing a type error that we don't want
         // add an attribute to the button...
-        // runs answerSelected(groupNumber, questionNumber, answer) and nextQuestion()...
-        answerButton.setAttribute("onclick", `answerSelected(1, ${questionCounter}, '${answers[answer]}'), nextQuestion()`)
+        // runs answerSelected(groupNumber, questionNumber, answer) and nextQuestion(groupNumber)...
+        answerButton.setAttribute("onclick", `answerSelected(${groupNumber}, ${questionCounter}, '${answers[answer]}'), nextQuestion(${groupNumber})`)
         // append the answer button to the div with id="answers"
         currentAnswers.appendChild(answerButton)
     }
@@ -330,13 +474,6 @@ var questionArray = []
 var questionCounter = 0
 
 // --- define functions that build the different quizzes associated with each age category in the DOM ---
-
-// TODO: the next question function should run answerSelected with the right group number
-// to do this, we can simply pass the group number into nextQuestion()
-// we'll subsequently update nextQuestion() by changing answerSeleced() to include passed in parameter
-// to reproduce this issue, run the quiz and check the console logged arrays after each selection
-// you will see that the first group number is correct, but all others after are wrong
-// this is because 1 is currently hard coded into answerSelected() within nextQuestion()
 
 // group one pertains to ages 21 to 29
 function buildQuizGroupOne(){
@@ -368,7 +505,7 @@ function buildQuizGroupOne(){
         answerButton.appendChild(answerText);
         // set attributes of the button element to run functions once clicked...
         // functions are answerSelected(groupNumber, questionNumber, answer) and nextQuestion()
-        answerButton.setAttribute("onclick", `answerSelected(1, ${questionCounter}, '${answers[answer]}'), nextQuestion()`);
+        answerButton.setAttribute("onclick", `answerSelected(1, ${questionCounter}, '${answers[answer]}'), nextQuestion(1)`);
         // and append new answer button to the answers div
         currentAnswers.appendChild(answerButton)
     }        
@@ -405,7 +542,7 @@ function buildQuizGroupTwo(){
         answerButton.appendChild(answerText);
         // set attributes of the button element to run functions once clicked...
         // functions are answerSelected(groupNumber, questionNumber, answer) and nextQuestion()
-        answerButton.setAttribute("onclick", `answerSelected(2, ${questionCounter}, '${answers[answer]}'), nextQuestion()`);
+        answerButton.setAttribute("onclick", `answerSelected(2, ${questionCounter}, '${answers[answer]}'), nextQuestion(2)`);
         // and append new answer button to the answers div
         currentAnswers.appendChild(answerButton)
     }        
@@ -440,7 +577,7 @@ function buildQuizGroupThree(){
         answerButton.appendChild(answerText);
         // set attributes of the button element to run functions once clicked...
         // functions are answerSelected(groupNumber, questionNumber, answer) and nextQuestion()
-        answerButton.setAttribute("onclick", `answerSelected(3, ${questionCounter}, '${answers[answer]}'), nextQuestion()`);
+        answerButton.setAttribute("onclick", `answerSelected(3, ${questionCounter}, '${answers[answer]}'), nextQuestion(3)`);
         // and append new answer button to the answers div
         currentAnswers.appendChild(answerButton)
     }        
@@ -475,7 +612,7 @@ function buildQuizGroupFour(){
         answerButton.appendChild(answerText);
         // set attributes of the button element to run functions once clicked...
         // functions are answerSelected(groupNumber, questionNumber, answer) and nextQuestion()
-        answerButton.setAttribute("onclick", `answerSelected(4, ${questionCounter}, '${answers[answer]}'), nextQuestion()`);
+        answerButton.setAttribute("onclick", `answerSelected(4, ${questionCounter}, '${answers[answer]}'), nextQuestion(4)`);
         // and append new answer button to the answers div
         currentAnswers.appendChild(answerButton)
     }        
